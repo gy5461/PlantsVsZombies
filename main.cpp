@@ -30,6 +30,14 @@ IMAGE *imgPlants[PLANT_COUNT][20];
 int curX, curY;	//当前选中的植物，在移动过程中的位置
 int curPlant; // 0: 没有选中，1: 选中第一种
 
+struct Plant
+{
+	int type;		// 0: 没有选中，1: 选中第一种
+	int frameIndex;	//序列帧的序号
+};
+
+struct Plant map[3][9];
+
 bool fileExist(const char* name)
 {
 	FILE* fp = fopen(name, "r");
@@ -50,6 +58,7 @@ void gameInit()
 	loadimage(&imgBar, "res/bar5.png");
 
 	memset(imgPlants, 0, sizeof(imgPlants));
+	memset(map, 0, sizeof(map));
 	
 	//初始化植物卡牌
 	char name[64];
@@ -101,6 +110,21 @@ void updateWindow()
 		putimagePNG(curX - img->getwidth() / 2, curY - img->getheight() / 2, img);
 	}
 
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 9; j++)
+		{
+			int x = 256 + j * 81;
+			int y = 179 + i * 102 + 14;
+			int plantType = map[i][j].type - 1;
+			int index = map[i][j].frameIndex;
+			if (plantType >= 0)
+			{
+				putimagePNG(x, y, imgPlants[plantType][index]);
+			}
+		}
+	}
+
 	EndBatchDraw();	//结束双缓冲
 }
 
@@ -117,6 +141,8 @@ void userClick()
 				int index = (msg.x - 338) / 65;
 				status = 1;
 				curPlant = index + 1;
+				curX = msg.x;
+				curY = msg.y;
 			}
 		}
 		else if (msg.message == WM_MOUSEMOVE && status == 1)
@@ -126,7 +152,20 @@ void userClick()
 		}
 		else if (msg.message == WM_LBUTTONUP)
 		{
+			if (msg.x > 256 && msg.y > 179 && msg.y < 489)
+			{
+				int row = (msg.y - 179) / 102;
+				int col = (msg.x - 256) / 81;
 
+				if (map[row][col].type == 0)
+				{
+					map[row][col].type = curPlant;
+					map[row][col].frameIndex = 0;
+				}
+			}
+
+			curPlant = 0;
+			status = 0;
 		}
 	}
 

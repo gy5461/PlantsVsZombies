@@ -103,13 +103,6 @@ void updateWindow()
 		putimage(x, y, &imgCards[i]);
 	}
 
-	// 渲染拖动过程中的植物
-	if (curPlant > 0)
-	{
-		IMAGE* img = imgPlants[curPlant - 1][0];
-		putimagePNG(curX - img->getwidth() / 2, curY - img->getheight() / 2, img);
-	}
-
 	for (int i = 0; i < 3; i++)
 	{
 		for (int j = 0; j < 9; j++)
@@ -123,6 +116,13 @@ void updateWindow()
 				putimagePNG(x, y, imgPlants[plantType][index]);
 			}
 		}
+	}
+
+	// 渲染拖动过程中的植物
+	if (curPlant > 0)
+	{
+		IMAGE* img = imgPlants[curPlant - 1][0];
+		putimagePNG(curX - img->getwidth() / 2, curY - img->getheight() / 2, img);
 	}
 
 	EndBatchDraw();	//结束双缓冲
@@ -171,15 +171,56 @@ void userClick()
 
 }
 
+void updateGame()
+{
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 9; j++)
+		{
+			if (map[i][j].type > 0)
+			{
+				map[i][j].frameIndex++;
+				int plantType = map[i][j].type - 1;
+				int index = map[i][j].frameIndex;
+				if (imgPlants[plantType][index] == NULL)
+				{
+					map[i][j].frameIndex = 0;
+				}
+			}
+		}
+	}
+}
+
+void startUI()
+{
+	IMAGE imgBg, imgMenu1, imgMenu2;
+	loadimage(&imgBg, "res/menu.png");
+	loadimage(&imgBg, "res/menu1.png");
+	loadimage(&imgBg, "res/menu2.png");
+}
+
 int main(void)
 {
 	gameInit();
 
+	int timer = 0;
+	bool flag = true;
 	while (1)
 	{
 		userClick();
+		timer += getDelay();
+		if (timer > 20)
+		{
+			flag = true;
+			timer = 0;
+		}
 
-		updateWindow();
+		if (flag)
+		{
+			flag = false;
+			updateWindow();
+			updateGame();
+		}
 	}
 
 	system("pause");

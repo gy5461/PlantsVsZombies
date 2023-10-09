@@ -213,7 +213,7 @@ void updateWindow()
 	sprintf_s(scoreText, sizeof(scoreText), "%d", sunshine);
 	if (sunshine < 100)
 	{
-		outtextxy(281, 67, scoreText);	// 输出分数
+		outtextxy(280, 67, scoreText);	// 输出分数
 	}
 	else
 	{
@@ -326,7 +326,7 @@ void createSunshine()
 
 void createZombie()
 {
-	static int zmFre = 500;
+	static int zmFre = 200;
 	static int count = 0;
 	count++;
 	if (count > zmFre)
@@ -376,17 +376,38 @@ void updateZombie()
 {
 	int zmMax = sizeof(zms) / sizeof(zms[0]);
 
-	// 更新僵尸的位置
-	for (int i = 0; i < zmMax; i++)
+	static int count = 0;
+	count++;
+	if (count > 2)
 	{
-		if (zms[i].used)
+		count = 0;
+
+		// 更新僵尸的位置
+		for (int i = 0; i < zmMax; i++)
 		{
-			zms[i].x -= zms[i].speed;
-			if (zms[i].x < 170)
+			if (zms[i].used)
 			{
-				printf("GAME OVER\n");
-				MessageBox(NULL, "over", "over", 0);	//待优化
-				exit(0);	//待优化
+				zms[i].x -= zms[i].speed;
+				if (zms[i].x < 170)
+				{
+					printf("GAME OVER\n");
+					MessageBox(NULL, "over", "over", 0);	//待优化
+					exit(0);	//待优化
+				}
+			}
+		}
+	}
+
+	static int count2 = 0;
+	count2++;
+	if (count2 > 4)
+	{
+		count2 = 0;
+		for (int i = 0; i < zmMax; i++)
+		{
+			if (zms[i].used)
+			{
+				zms[i].frameIndex = (zms[i].frameIndex + 1) % 22;
 			}
 		}
 	}

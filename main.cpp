@@ -55,6 +55,16 @@ struct SunshineBall balls[10];
 IMAGE imgSunshineBall[29];
 int sunshine;
 
+struct Zombie
+{
+	int x, y;
+	int frameIndex;
+	bool used;
+	int speed;
+};
+struct Zombie zms[10];
+IMAGE imgZombie[22];
+
 bool fileExist(const char* name)
 {
 	FILE* fp = fopen(name, "r");
@@ -127,6 +137,30 @@ void gameInit()
 	settextstyle(&f);
 	setbkmode(TRANSPARENT);
 	setcolor(BLACK);
+
+	// 初始化僵尸数据
+	memset(zms, 0, sizeof(zms));
+	for (int i = 0; i < 22; i++)
+	{
+		sprintf_s(name, sizeof(name), "res/zm/%d.png", i);
+		loadimage(&imgZombie[i], name);
+	}
+}
+
+void drawZM()
+{
+	int zmCount = sizeof(zms) / sizeof(zms[0]);
+	for (int i = 0; i < zmCount; i++)
+	{
+		if (zms[i].used)
+		{
+			IMAGE* img = &imgZombie[zms[i].frameIndex];
+			putimagePNG(
+				zms[i].x, 
+				zms[i].y - img->getheight(), 
+				img);
+		}
+	}
 }
 
 void updateWindow()
@@ -185,6 +219,8 @@ void updateWindow()
 	{
 		outtextxy(276, 67, scoreText);	// 输出分数
 	}
+
+	drawZM();
 
 	EndBatchDraw();	//结束双缓冲
 }
@@ -288,6 +324,29 @@ void createSunshine()
 	}
 }
 
+void createZombie()
+{
+	static int zmFre = 500;
+	static int count = 0;
+	count++;
+	if (count > zmFre)
+	{
+		count = 0;
+		zmFre = rand() % 200 + 300;
+
+		int i;
+		int zmMax = sizeof(zms) / sizeof(zms[0]);
+		for (i = 0; i < zmMax && zms[i].used; i++);
+		if (i < zmMax)
+		{
+			zms[i].used = true;
+			zms[i].x = WIN_WIDTH;
+			zms[i].y = 172 + (1 + rand() % 3) * 100;
+			zms[i].speed = 1;
+		}
+	}
+}
+
 void updateSunshine()
 {
 	int ballMax = sizeof(balls) / sizeof(balls[0]);
@@ -308,6 +367,26 @@ void updateSunshine()
 				{
 					balls[i].used = false;
 				}
+			}
+		}
+	}
+}
+
+void updateZombie()
+{
+	int zmMax = sizeof(zms) / sizeof(zms[0]);
+
+	// 更新僵尸的位置
+	for (int i = 0; i < zmMax; i++)
+	{
+		if (zms[i].used)
+		{
+			zms[i].x -= zms[i].speed;
+			if (zms[i].x < 170)
+			{
+				printf("GAME OVER\n");
+				MessageBox(NULL, "over", "over", 0);	//待优化
+				exit(0);	//待优化
 			}
 		}
 	}
@@ -334,6 +413,9 @@ void updateGame()
 
 	createSunshine();	// 创建阳光
 	updateSunshine();	// 更新阳光状态
+
+	createZombie();	// 创建僵尸
+	updateZombie();	// 更新僵尸状态
 }
 
 void startUI()

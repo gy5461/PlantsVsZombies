@@ -65,9 +65,21 @@ struct Zombie
 	int frameIndex;
 	bool used;
 	int speed;
+	int row;
 };
 struct Zombie zms[10];
 IMAGE imgZombie[22];
+
+// 子弹的数据类型
+struct bullet
+{
+	int x, y;
+	int row;
+	bool used;
+	int speed;
+};
+struct bullet bullets[30];
+IMAGE imgBulletNormal;
 
 bool fileExist(const char* name)
 {
@@ -149,6 +161,9 @@ void gameInit()
 		sprintf_s(name, sizeof(name), "res/zm/%d.png", i);
 		loadimage(&imgZombie[i], name);
 	}
+
+	loadimage(&imgBulletNormal, "res/bullets/PeaNormal/PeaNormal_0.png");
+	memset(bullets, 0, sizeof(bullets));
 }
 
 void drawZM()
@@ -225,6 +240,15 @@ void updateWindow()
 	}
 
 	drawZM();
+
+	int bulletMax = sizeof(bullets) / sizeof(bullets[0]);
+	for (int i = 0; i < bulletMax; i++)
+	{
+		if (bullets[i].used)
+		{
+			putimagePNG(bullets[i].x, bullets[i].y, &imgBulletNormal);
+		}
+	}
 
 	EndBatchDraw();	//结束双缓冲
 }
@@ -352,7 +376,8 @@ void createZombie()
 		{
 			zms[i].used = true;
 			zms[i].x = WIN_WIDTH;
-			zms[i].y = 172 + (1 + rand() % 3) * 100;
+			zms[i].row = rand() % 3;	//0..2
+			zms[i].y = 172 + (1 + zms[i].row) * 100;
 			zms[i].speed = 1;
 		}
 	}
@@ -442,6 +467,67 @@ void updateZombie()
 	}
 }
 
+void shoot()
+{
+	int lines[3] = { 0 };
+	int zmCnt = sizeof(zms) / sizeof(zms[0]);
+	int bulletMax = sizeof(bullets) / sizeof(bullets[0]);
+	int danagerX = WIN_WIDTH - imgZombie[0].getwidth();
+	for (int i = 0; i < zmCnt; i++)
+	{
+		if (zms[i].used && zms[i].x < danagerX)
+		{
+			lines[zms[i].row] = 1;
+		}
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 9; j++)
+		{
+			if (map[i][j].type == PEASHOOTER + 1 && lines[i])
+			{
+				static int count = 0;
+				count++;
+				if (count > 20)
+				{
+					count = 0;
+
+					int k;
+					for (k = 0; k < bulletMax && bullets[k].used; k++);
+					if (k < bulletMax)
+					{
+						bullets[k].used = true;
+						bullets[k].row = i;
+						bullets[k].speed = 6;
+
+						int plantX = 256 + j * 81;
+						int plantY = 179 + i * 102 + 14;
+						bullets[k].x = plantX + imgPlants[map[i][j].type - 1][0]->getwidth() - 10;
+						bullets[k].y = plantY + 5;
+					}
+				}
+			}
+		}
+	}
+}
+
+void updateBullets()
+{
+	int countMax = sizeof(bullets) / sizeof(bullets[0]);
+	for (int i = 0; i < countMax; i++)
+	{
+		if (bullets[i].used)
+		{
+			bullets[i].x += bullets[i].speed;
+			if (bullets[i].x > WIN_WIDTH)
+			{
+				bullets[i].used = false;
+			}
+		}
+	}
+}
+
 void updateGame()
 {
 	for (int i = 0; i < 3; i++)
@@ -466,6 +552,9 @@ void updateGame()
 
 	createZombie();	// 创建僵尸
 	updateZombie();	// 更新僵尸状态
+
+	shoot();	// 发射豌豆子弹
+	updateBullets();	// 更新豌豆子弹
 }
 
 void startUI()

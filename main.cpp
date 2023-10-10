@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <graphics.h>	//easyx图形库的头文件，需要安装easyx图形库
 #include <time.h>
+#include <math.h>
 #include "tools.h"
 
 #include <mmsystem.h>
@@ -49,6 +50,9 @@ struct SunshineBall
 	int destY;		// 飘落的目标位置的y坐标
 	bool used;		// 是否在使用
 	int timer;
+
+	float xoff;
+	float yoff;
 };
 
 struct SunshineBall balls[10];
@@ -202,7 +206,7 @@ void updateWindow()
 	int ballMax = sizeof(balls) / sizeof(balls[0]);
 	for (int i = 0; i < ballMax; i++)
 	{
-		if (balls[i].used)
+		if (balls[i].used || balls[i].xoff)
 		{
 			IMAGE* img = &imgSunshineBall[balls[i].frameIndex];
 			putimagePNG(balls[i].x, balls[i].y, img);
@@ -241,8 +245,13 @@ void collectSunshine(ExMessage* msg)
 				msg->y > y && msg->y < y + h)
 			{
 				balls[i].used = false;
-				sunshine += 25;
 				mciSendString("play res/sunshine.mp3", 0, 0, 0);
+				// 设置阳光球的偏移量
+				float destY = 0;
+				float destX = 262;
+				float angle = atan((y - destY) / (x - destX));
+				balls[i].xoff = 4 * cos(angle);
+				balls[i].yoff = 4 * sin(angle);
 			}
 		}
 	}
@@ -321,6 +330,8 @@ void createSunshine()
 		balls[i].y = 60;
 		balls[i].destY = 200 + (rand() % 4) * 90;	// 0..3
 		balls[i].timer = 0;
+		balls[i].xoff = 0;
+		balls[i].yoff = 0;
 	}
 }
 
@@ -367,6 +378,24 @@ void updateSunshine()
 				{
 					balls[i].used = false;
 				}
+			}
+		}
+		else if (balls[i].xoff)
+		{
+			// 设置阳光球的偏移量
+			float destY = 0;
+			float destX = 262;
+			float angle = atan((balls[i].y - destY) / (balls[i].x - destX));
+			balls[i].xoff = 4 * cos(angle);
+			balls[i].yoff = 4 * sin(angle);
+
+			balls[i].x -= balls[i].xoff;
+			balls[i].y -= balls[i].yoff;
+			if (balls[i].y < 0 || balls[i].x < 262)
+			{
+				balls[i].xoff = 0;
+				balls[i].yoff = 0;
+				sunshine += 25;
 			}
 		}
 	}

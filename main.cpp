@@ -413,6 +413,7 @@ void createZombie()
 			zms[i].y = 172 + (1 + zms[i].row) * 100;
 			zms[i].speed = 1;
 			zms[i].blood = 100;
+			zms[i].dead = false;
 		}
 	}
 }

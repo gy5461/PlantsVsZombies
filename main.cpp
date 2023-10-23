@@ -67,9 +67,11 @@ struct Zombie
 	int speed;
 	int row;
 	int blood;
+	bool dead;
 };
 struct Zombie zms[10];
 IMAGE imgZombie[22];
+IMAGE imgZombieDead[20];
 
 // 子弹的数据类型
 struct bullet
@@ -178,6 +180,12 @@ void gameInit()
 			imgBulletBlast[3].getwidth() * k,
 			imgBulletBlast[3].getheight() * k, true);
 	}
+
+	for (int i = 0; i < 20; i++)
+	{
+		sprintf_s(name, sizeof(name), "res/zm_dead/%d.png", i + 1);
+		loadimage(&imgZombieDead[i], name);
+	}
 }
 
 void drawZM()
@@ -187,7 +195,10 @@ void drawZM()
 	{
 		if (zms[i].used)
 		{
-			IMAGE* img = &imgZombie[zms[i].frameIndex];
+			//IMAGE* img = &imgZombie[zms[i].frameIndex];
+			IMAGE* img = (zms[i].dead) ? imgZombieDead : imgZombie;
+			img += zms[i].frameIndex;
+
 			putimagePNG(
 				zms[i].x, 
 				zms[i].y - img->getheight(), 
@@ -484,7 +495,18 @@ void updateZombie()
 		{
 			if (zms[i].used)
 			{
-				zms[i].frameIndex = (zms[i].frameIndex + 1) % 22;
+				if (zms[i].dead)
+				{
+					zms[i].frameIndex++;
+					if (zms[i].frameIndex >= 20)
+					{
+						zms[i].used = false;
+					}
+				}
+				else
+				{
+					zms[i].frameIndex = (zms[i].frameIndex + 1) % 22;
+				}
 			}
 		}
 	}
@@ -577,7 +599,7 @@ void collisionCheck()
 
 		for (int k = 0; k < zombieNum; k++)
 		{
-			if (zms[k].used == false)
+			if (zms[k].used == false || zms[k].dead)
 			{
 				continue;
 			}
@@ -590,6 +612,15 @@ void collisionCheck()
 				bullets[i].blast = true;
 				zms[k].blood -= 20;
 				bullets[i].speed = 0;
+
+				if (zms[k].blood <= 0)
+				{
+					zms[k].dead = true;
+					zms[k].speed = 0;
+					zms[k].frameIndex = 0;
+				}
+
+				break;
 			}
 		}
 	}

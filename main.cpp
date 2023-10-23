@@ -66,6 +66,7 @@ struct Zombie
 	bool used;
 	int speed;
 	int row;
+	int blood;
 };
 struct Zombie zms[10];
 IMAGE imgZombie[22];
@@ -77,9 +78,12 @@ struct bullet
 	int row;
 	bool used;
 	int speed;
+	bool blast;	//是否发射爆炸
+	int frameIndex;	//帧序号
 };
 struct bullet bullets[30];
 IMAGE imgBulletNormal;
+IMAGE imgBulletBlast[4];
 
 bool fileExist(const char* name)
 {
@@ -164,6 +168,16 @@ void gameInit()
 
 	loadimage(&imgBulletNormal, "res/bullets/PeaNormal/PeaNormal_0.png");
 	memset(bullets, 0, sizeof(bullets));
+
+	// 初始化豌豆子弹的帧图片数组
+	loadimage(&imgBulletBlast[3], "res/bullets/bullet_blast.png");
+	for (int i = 0; i < 3; i++)
+	{
+		float k = (i + 1) * 0.2;
+		loadimage(&imgBulletBlast[i], "res/bullets/bullet_blast.png",
+			imgBulletBlast[3].getwidth() * k,
+			imgBulletBlast[3].getheight() * k, true);
+	}
 }
 
 void drawZM()
@@ -246,7 +260,15 @@ void updateWindow()
 	{
 		if (bullets[i].used)
 		{
-			putimagePNG(bullets[i].x, bullets[i].y, &imgBulletNormal);
+			if (bullets[i].blast)
+			{
+				IMAGE* img = &imgBulletBlast[bullets[i].frameIndex];
+				putimagePNG(bullets[i].x, bullets[i].y, img);
+			}
+			else
+			{
+				putimagePNG(bullets[i].x, bullets[i].y, &imgBulletNormal);
+			}
 		}
 	}
 
@@ -379,6 +401,7 @@ void createZombie()
 			zms[i].row = rand() % 3;	//0..2
 			zms[i].y = 172 + (1 + zms[i].row) * 100;
 			zms[i].speed = 1;
+			zms[i].blood = 100;
 		}
 	}
 }
@@ -501,6 +524,9 @@ void shoot()
 						bullets[k].row = i;
 						bullets[k].speed = 6;
 
+						bullets[k].blast = false;
+						bullets[k].frameIndex = 0;
+
 						int plantX = 256 + j * 81;
 						int plantY = 179 + i * 102 + 14;
 						bullets[k].x = plantX + imgPlants[map[i][j].type - 1][0]->getwidth() - 10;
@@ -523,6 +549,47 @@ void updateBullets()
 			if (bullets[i].x > WIN_WIDTH)
 			{
 				bullets[i].used = false;
+			}
+			
+			// 待实现子弹的碰撞检测
+			if (bullets[i].blast)
+			{
+				bullets[i].frameIndex++;
+				if (bullets[i].frameIndex >= 4)
+				{
+					bullets[i].used = false;
+				}
+			}
+		}
+	}
+}
+
+void collisionCheck()
+{
+	int bulletCnt = sizeof(bullets) / sizeof(bullets[0]);
+	int zombieNum = sizeof(zms) / sizeof(zms[0]);
+	for (int i = 0; i < bulletCnt; i++)
+	{
+		if (bullets[i].used == false || bullets[i].blast)
+		{
+			continue;
+		}
+
+		for (int k = 0; k < zombieNum; k++)
+		{
+			if (zms[k].used == false)
+			{
+				continue;
+			}
+
+			int x1 = zms[k].x + 80;
+			int x2 = zms[k].x + 110;
+			int x = bullets[i].x;
+			if (bullets[i].row == zms[k].row && x > x1 && x < x2)
+			{
+				bullets[i].blast = true;
+				zms[k].blood -= 20;
+				bullets[i].speed = 0;
 			}
 		}
 	}
@@ -555,6 +622,8 @@ void updateGame()
 
 	shoot();	// 发射豌豆子弹
 	updateBullets();	// 更新豌豆子弹
+
+	collisionCheck();	//实现豌豆子弹和僵尸的碰撞检测
 }
 
 void startUI()

@@ -38,7 +38,9 @@ int curPlant; // 0: 没有选中，1: 选中第一种
 struct Plant
 {
 	int type;		// 0: 没有选中，1: 选中第一种
-	int frameIndex;	//序列帧的序号
+	int frameIndex;	// 序列帧的序号
+	bool catched;	// 被僵尸捕获
+	int deadTime;	// 死亡计数器
 };
 
 struct Plant map[3][9];
@@ -68,10 +70,12 @@ struct Zombie
 	int row;
 	int blood;
 	bool dead;
+	bool eating;	// 正在吃植物
 };
 struct Zombie zms[10];
 IMAGE imgZombie[22];
 IMAGE imgZombieDead[20];
+IMAGE imgZombieEat[21];
 
 // 子弹的数据类型
 struct bullet
@@ -186,6 +190,12 @@ void gameInit()
 		sprintf_s(name, sizeof(name), "res/zm_dead/%d.png", i + 1);
 		loadimage(&imgZombieDead[i], name);
 	}
+
+	for (int i = 0; i < 21; i++)
+	{
+		sprintf_s(name, sizeof(name), "res/zm_eat/%d.png", i + 1);
+		loadimage(&imgZombieEat[i], name);
+	}
 }
 
 void drawZM()
@@ -196,7 +206,21 @@ void drawZM()
 		if (zms[i].used)
 		{
 			//IMAGE* img = &imgZombie[zms[i].frameIndex];
-			IMAGE* img = (zms[i].dead) ? imgZombieDead : imgZombie;
+			//IMAGE* img = (zms[i].dead) ? imgZombieDead : imgZombie;
+			IMAGE* img = NULL;
+			if (zms[i].dead)
+			{
+				img = imgZombieDead;
+			}
+			else if (zms[i].eating)
+			{
+				img = imgZombieEat;
+			}
+			else
+			{
+				img = imgZombie;
+			}
+
 			img += zms[i].frameIndex;
 
 			putimagePNG(
@@ -407,6 +431,7 @@ void createZombie()
 		for (i = 0; i < zmMax && zms[i].used; i++);
 		if (i < zmMax)
 		{
+			memset(&zms[i], 0, sizeof(zms[i]));
 			zms[i].used = true;
 			zms[i].x = WIN_WIDTH;
 			zms[i].row = rand() % 3;	//0..2
@@ -479,9 +504,9 @@ void updateZombie()
 				zms[i].x -= zms[i].speed;
 				if (zms[i].x < 170)
 				{
-					printf("GAME OVER\n");
-					MessageBox(NULL, "over", "over", 0);	//待优化
-					exit(0);	//待优化
+					//printf("GAME OVER\n");
+					//MessageBox(NULL, "over", "over", 0);	//待优化
+					//exit(0);	//待优化
 				}
 			}
 		}
@@ -503,6 +528,10 @@ void updateZombie()
 					{
 						zms[i].used = false;
 					}
+				}
+				else if (zms[i].eating)
+				{
+					zms[i].frameIndex = (zms[i].frameIndex + 1) % 21;
 				}
 				else
 				{
@@ -587,7 +616,7 @@ void updateBullets()
 	}
 }
 
-void collisionCheck()
+void checkBullet2Zm()
 {
 	int bulletCnt = sizeof(bullets) / sizeof(bullets[0]);
 	int zombieNum = sizeof(zms) / sizeof(zms[0]);
@@ -611,7 +640,7 @@ void collisionCheck()
 			if (bullets[i].row == zms[k].row && x > x1 && x < x2)
 			{
 				bullets[i].blast = true;
-				zms[k].blood -= 20;
+				zms[k].blood -= 10;
 				bullets[i].speed = 0;
 
 				if (zms[k].blood <= 0)
@@ -625,6 +654,64 @@ void collisionCheck()
 			}
 		}
 	}
+}
+
+void checkZm2Plant()
+{
+	int zCount = sizeof(zms) / sizeof(zms[0]);
+	for (int i = 0; i < zCount; i++)
+	{
+		if (zms[i].dead || !zms[i].used)
+		{
+			continue;
+		}
+
+		int row = zms[i].row;
+		for (int k = 0; k < 9; k++)
+		{
+			if (map[row][k].type == 0)
+			{
+				continue;
+			}
+
+			//    x1  x2
+			//    [    ]
+			//      x3
+			int plantX = 256 + k * 81;
+			int x1 = plantX + 10;
+			int x2 = plantX + 60;
+			int x3 = zms[i].x + 80;
+			if (x3 > x1 && x3 < x2)
+			{
+				if (map[row][k].catched)
+				{
+					map[row][k].deadTime++;
+					if (map[row][k].deadTime > 100)
+					{
+						map[row][k].deadTime = 0;
+						map[row][k].type = 0;
+						zms[i].eating = false;
+						zms[i].frameIndex = 0;
+						zms[i].speed = 1;
+					}
+				}
+				else
+				{
+					map[row][k].catched = true;
+					map[row][k].deadTime = 0;
+					zms[i].eating = true;
+					zms[i].speed = 0;
+					zms[i].frameIndex = 0;
+				}
+			}
+		}
+	}
+}
+
+void collisionCheck()
+{
+	checkBullet2Zm();	// 子弹对僵尸的碰撞检测
+	checkZm2Plant();	// 僵尸对植物的碰撞检测
 }
 
 void updateGame()

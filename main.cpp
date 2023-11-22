@@ -13,6 +13,7 @@
 #include <time.h>
 #include <math.h>
 #include "tools.h"
+#include "vector2.h"
 
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
@@ -39,11 +40,17 @@ struct Plant
 {
 	int type;		// 0: 没有选中，1: 选中第一种
 	int frameIndex;	// 序列帧的序号
+
 	bool catched;	// 被僵尸捕获
 	int deadTime;	// 死亡计数器
+
+	int timer;
+	int x, y;
 };
 
 struct Plant map[3][9];
+
+enum {SUNSHINE_DOWN, SUNSHINE_GROUND, SUNSHINE_COLLECT, SUNSHINE_PRODUCT};
 
 struct SunshineBall
 {
@@ -55,6 +62,12 @@ struct SunshineBall
 
 	float xoff;
 	float yoff;
+
+	float t;		// 贝塞尔曲线的时间点 0..1
+	vector2 p1, p2, p3, p4;
+	vector2 pCur;	// 当前时刻阳光球的位置
+	float speed;
+	int status;
 };
 
 struct SunshineBall balls[10];
@@ -231,6 +244,19 @@ void drawZM()
 	}
 }
 
+void drawSunshines()
+{
+	int ballMax = sizeof(balls) / sizeof(balls[0]);
+	for (int i = 0; i < ballMax; i++)
+	{
+		if (balls[i].used)
+		{
+			IMAGE* img = &imgSunshineBall[balls[i].frameIndex];
+			putimagePNG(balls[i].pCur.x, balls[i].pCur.y, img);
+		}
+	}
+}
+
 void updateWindow()
 {
 	BeginBatchDraw();	//开始缓冲
@@ -249,13 +275,11 @@ void updateWindow()
 	{
 		for (int j = 0; j < 9; j++)
 		{
-			int x = 256 + j * 81;
-			int y = 179 + i * 102 + 14;
-			int plantType = map[i][j].type - 1;
-			int index = map[i][j].frameIndex;
-			if (plantType >= 0)
+			if (map[i][j].type > 0)
 			{
-				putimagePNG(x, y, imgPlants[plantType][index]);
+				int plantType = map[i][j].type - 1;
+				int index = map[i][j].frameIndex;
+				putimagePNG(map[i][j].x, map[i][j].y, imgPlants[plantType][index]);
 			}
 		}
 	}
@@ -267,15 +291,7 @@ void updateWindow()
 		putimagePNG(curX - img->getwidth() / 2, curY - img->getheight() / 2, img);
 	}
 
-	int ballMax = sizeof(balls) / sizeof(balls[0]);
-	for (int i = 0; i < ballMax; i++)
-	{
-		if (balls[i].used || balls[i].xoff)
-		{
-			IMAGE* img = &imgSunshineBall[balls[i].frameIndex];
-			putimagePNG(balls[i].x, balls[i].y, img);
-		}
-	}
+	drawSunshines();
 
 	char scoreText[8];
 	sprintf_s(scoreText, sizeof(scoreText), "%d", sunshine);
@@ -319,20 +335,22 @@ void collectSunshine(ExMessage* msg)
 	{
 		if (balls[i].used)
 		{
-			int x = balls[i].x;
-			int y = balls[i].y;
+			int x = balls[i].pCur.x;
+			int y = balls[i].pCur.y;
 
 			if (msg->x > x && msg->x < x + w &&
 				msg->y > y && msg->y < y + h)
 			{
 				balls[i].used = false;
+				balls[i].status = SUNSHINE_COLLECT;
 				mciSendString("play res/sunshine.mp3", 0, 0, 0);
-				// 设置阳光球的偏移量
-				float destY = 0;
-				float destX = 262;
-				float angle = atan((y - destY) / (x - destX));
-				balls[i].xoff = 4 * cos(angle);
-				balls[i].yoff = 4 * sin(angle);
+				balls[i].p1 = balls[i].pCur;
+				balls[i].p4 = vector2(262, 0);
+				balls[i].t = 0;
+				float distance = dis(balls[i].p1 - balls[i].p4);
+				float off = 8;
+				balls[i].speed = 1.0 / (distance / off);
+				break;
 			}
 		}
 	}
@@ -375,6 +393,9 @@ void userClick()
 				{
 					map[row][col].type = curPlant;
 					map[row][col].frameIndex = 0;
+
+					map[row][col].x = 256 + col * 81;
+					map[row][col].y = 179 + row * 102 + 14;
 				}
 			}
 
@@ -407,13 +428,18 @@ void createSunshine()
 
 		balls[i].used = true;
 		balls[i].frameIndex = 0;
-		balls[i].x = 260 + rand() % (900 - 260);	// 260..900
-		balls[i].y = 60;
-		balls[i].destY = 200 + (rand() % 4) * 90;	// 0..3
 		balls[i].timer = 0;
-		balls[i].xoff = 0;
-		balls[i].yoff = 0;
+
+		balls[i].status = SUNSHINE_DOWN;
+		balls[i].t = 0;
+		balls[i].p1 = vector2(260 + rand() % (900 - 260), 60);
+		balls[i].p4 = vector2(balls[i].p1.x, 200 + (rand() % 4) * 90);
+		int off = 2;
+		float distance = balls[i].p4.y - balls[i].p1.y;
+		balls[i].speed = 1.0 / (distance / off);
 	}
+
+	// 向日葵生产阳光
 }
 
 void createZombie()

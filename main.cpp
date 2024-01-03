@@ -103,6 +103,7 @@ struct bullet
 struct bullet bullets[30];
 IMAGE imgBulletNormal;
 IMAGE imgBulletBlast[4];
+IMAGE imgZombieStand[11];
 
 bool fileExist(const char* name)
 {
@@ -208,6 +209,12 @@ void gameInit()
 	{
 		sprintf_s(name, sizeof(name), "res/zm_eat/%d.png", i + 1);
 		loadimage(&imgZombieEat[i], name);
+	}
+
+	for (int i = 0; i < 11; i++)
+	{
+		sprintf_s(name, sizeof(name), "res/zm_stand/%d.png", i + 1);
+		loadimage(&imgZombieStand[i], name);
 	}
 }
 
@@ -872,11 +879,65 @@ void startUI()
 			}
 			else if (msg.message == WM_LBUTTONUP && flag)
 			{
-				return;
+				EndBatchDraw();
+				break;
 			}
 		}
 
 		EndBatchDraw();
+	}
+}
+
+void viewScene()
+{
+	int xMin = WIN_WIDTH - imgBg.getwidth();	//900-1400=-500
+	vector2 points[9] = {
+		{550, 80}, {530, 160}, {630, 170}, {530, 200}, {515, 270},
+		{565,370}, {605, 340}, {705, 280}, {690, 340} };
+	int index[9];
+	for (int i = 0; i < 9; i++)
+	{
+		index[i] = rand() % 11;
+	}
+
+	int count = 0;
+	for (int x = 0; x >= xMin; x -= 2)
+	{
+		BeginBatchDraw();
+		putimage(x, 0, &imgBg);
+
+		count++;
+		for (int k = 0; k < 9; k++)
+		{
+			putimagePNG(points[k].x - xMin + x, 
+				points[k].y, 
+				&imgZombieStand[index[k]]);
+			if (count >= 10)
+			{
+				index[k] = (index[k] + 1) % 11;
+			}
+		}
+
+		if (count >= 10)count = 0;
+
+		EndBatchDraw();
+		Sleep(5);
+	}
+
+	// 停留1S左右
+	for (int i = 0; i < 100; i++)
+	{
+		BeginBatchDraw();
+
+		putimage(xMin, 0, &imgBg);
+		for (int k = 0; k < 9; k++)
+		{
+			putimagePNG(points[k].x, points[k].y, &imgZombieStand[index[k]]);
+			index[k] = (index[k] + 1) % 11;
+		}
+
+		EndBatchDraw();
+		Sleep(50);
 	}
 }
 
@@ -885,6 +946,8 @@ int main(void)
 	gameInit();
 
 	startUI();
+
+	viewScene();
 
 	int timer = 0;
 	bool flag = true;

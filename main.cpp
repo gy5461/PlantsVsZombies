@@ -255,22 +255,31 @@ void drawSunshines()
 			putimagePNG(balls[i].pCur.x, balls[i].pCur.y, img);
 		}
 	}
+
+	char scoreText[8];
+	sprintf_s(scoreText, sizeof(scoreText), "%d", sunshine);
+	if (sunshine < 100)
+	{
+		outtextxy(280, 67, scoreText);	// 输出分数
+	}
+	else
+	{
+		outtextxy(276, 67, scoreText);	// 输出分数
+	}
 }
 
-void updateWindow()
+void drawCards()
 {
-	BeginBatchDraw();	//开始缓冲
-
-	putimage(0, 0, &imgBg);
-	putimagePNG(250, 0, &imgBar);
-
 	for (int i = 0; i < PLANT_COUNT; i++)
 	{
 		int x = 338 + i * 65;
 		int y = 6;
 		putimage(x, y, &imgCards[i]);
 	}
+}
 
+void drawPlants()
+{
 	for (int i = 0; i < 3; i++)
 	{
 		for (int j = 0; j < 9; j++)
@@ -290,22 +299,10 @@ void updateWindow()
 		IMAGE* img = imgPlants[curPlant - 1][0];
 		putimagePNG(curX - img->getwidth() / 2, curY - img->getheight() / 2, img);
 	}
+}
 
-	drawSunshines();
-
-	char scoreText[8];
-	sprintf_s(scoreText, sizeof(scoreText), "%d", sunshine);
-	if (sunshine < 100)
-	{
-		outtextxy(280, 67, scoreText);	// 输出分数
-	}
-	else
-	{
-		outtextxy(276, 67, scoreText);	// 输出分数
-	}
-
-	drawZM();
-
+void drawBullets()
+{
 	int bulletMax = sizeof(bullets) / sizeof(bullets[0]);
 	for (int i = 0; i < bulletMax; i++)
 	{
@@ -322,6 +319,20 @@ void updateWindow()
 			}
 		}
 	}
+}
+
+void updateWindow()
+{
+	BeginBatchDraw();	//开始缓冲
+
+	putimage(0, 0, &imgBg);
+	putimagePNG(250, 0, &imgBar);
+
+	drawCards();
+	drawPlants();
+	drawSunshines();
+	drawZM();
+	drawBullets();
 
 	EndBatchDraw();	//结束双缓冲
 }
@@ -566,7 +577,7 @@ void updateZombie()
 
 	static int count = 0;
 	count++;
-	if (count > 2)
+	if (count > 2 * 2)
 	{
 		count = 0;
 
@@ -588,7 +599,7 @@ void updateZombie()
 
 	static int count2 = 0;
 	count2++;
-	if (count2 > 4)
+	if (count2 > 4 * 2)
 	{
 		count2 = 0;
 		for (int i = 0; i < zmMax; i++)
@@ -618,6 +629,10 @@ void updateZombie()
 
 void shoot()
 {
+	static int count = 0;
+	if (++count < 2)return;
+	count = 0;
+
 	int lines[3] = { 0 };
 	int zmCnt = sizeof(zms) / sizeof(zms[0]);
 	int bulletMax = sizeof(bullets) / sizeof(bullets[0]);
@@ -666,6 +681,10 @@ void shoot()
 
 void updateBullets()
 {
+	static int count = 0;
+	if (++count < 2)return;
+	count = 0;
+
 	int countMax = sizeof(bullets) / sizeof(bullets[0]);
 	for (int i = 0; i < countMax; i++)
 	{
@@ -788,8 +807,12 @@ void collisionCheck()
 	checkZm2Plant();	// 僵尸对植物的碰撞检测
 }
 
-void updateGame()
+void updatePlants()
 {
+	static int count = 0;
+	if (++count < 2)return;
+	count = 0;
+
 	for (int i = 0; i < 3; i++)
 	{
 		for (int j = 0; j < 9; j++)
@@ -806,6 +829,11 @@ void updateGame()
 			}
 		}
 	}
+}
+
+void updateGame()
+{
+	updatePlants();
 
 	createSunshine();	// 创建阳光
 	updateSunshine();	// 更新阳光状态
@@ -864,7 +892,7 @@ int main(void)
 	{
 		userClick();
 		timer += getDelay();
-		if (timer > 20)
+		if (timer > 10)
 		{
 			flag = true;
 			timer = 0;

@@ -12,14 +12,16 @@
 #include <graphics.h>	//easyx图形库的头文件，需要安装easyx图形库
 #include <time.h>
 #include <math.h>
+#include <windows.h>
 #include "tools.h"
 #include "vector2.h"
 
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
 
-#define WIN_WIDTH 900
-#define WIN_HEIGHT 600
+#define WIN_WIDTH	900
+#define WIN_HEIGHT	600
+#define ZM_MAX		10
 
 enum
 {
@@ -36,6 +38,11 @@ IMAGE *imgPlants[PLANT_COUNT][20];
 int curX, curY;	//当前选中的植物，在移动过程中的位置
 int curPlant; // 0: 没有选中，1: 选中第一种
 
+enum {GOING, WIN, FAIL};
+int killCount;	// 当前已经杀掉的僵尸个数
+int zmCount;	// 当前已经出现的僵尸个数
+int gameStatus;
+
 struct Plant
 {
 	int type;		// 0: 没有选中，1: 选中第一种
@@ -46,6 +53,8 @@ struct Plant
 
 	int timer;
 	int x, y;
+
+	int shootTime;
 };
 
 struct Plant map[3][9];
@@ -126,6 +135,10 @@ void gameInit()
 
 	memset(imgPlants, 0, sizeof(imgPlants));
 	memset(map, 0, sizeof(map));
+
+	killCount = 0;
+	zmCount = 0;
+	gameStatus = GOING;
 	
 	//初始化植物卡牌
 	char name[64];
@@ -216,6 +229,8 @@ void gameInit()
 		sprintf_s(name, sizeof(name), "res/zm_stand/%d.png", i + 1);
 		loadimage(&imgZombieStand[i], name);
 	}
+
+	mciSendString("play res/bg.mp3 repeat", NULL, 0, NULL);
 }
 
 void drawZM()
@@ -265,7 +280,11 @@ void drawSunshines()
 
 	char scoreText[8];
 	sprintf_s(scoreText, sizeof(scoreText), "%d", sunshine);
-	if (sunshine < 100)
+	if (sunshine < 10)
+	{
+		outtextxy(286, 67, scoreText);	// 输出分数
+	}
+	else if (sunshine < 100)
 	{
 		outtextxy(280, 67, scoreText);	// 输出分数
 	}
@@ -388,8 +407,26 @@ void userClick()
 			if (msg.x > 338 && msg.x < 338 + 65 * PLANT_COUNT && msg.y >6 && msg.y < 96)
 			{
 				int index = (msg.x - 338) / 65;
-				status = 1;
+				
 				curPlant = index + 1;
+				if (curPlant == PEASHOOTER + 1)
+				{
+					if (sunshine < 100)
+					{
+						curPlant = 0;
+						return;
+					}
+				}
+				else if (curPlant == SUNFLOWER + 1)
+				{
+					if (sunshine < 50)
+					{
+						curPlant = 0;
+						return;
+					}
+				}
+
+				status = 1;
 				curX = msg.x;
 				curY = msg.y;
 			}
@@ -414,9 +451,17 @@ void userClick()
 				{
 					map[row][col].type = curPlant;
 					map[row][col].frameIndex = 0;
-
+					map[row][col].shootTime = 0;
 					map[row][col].x = 256 - 112 + col * 81;
 					map[row][col].y = 179 + row * 102 + 14;
+					if (curPlant == PEASHOOTER + 1)
+					{
+						sunshine -= 100;
+					}
+					else if (curPlant == SUNFLOWER + 1)
+					{
+						sunshine -= 50;
+					}
 				}
 			}
 
@@ -499,6 +544,11 @@ void createSunshine()
 
 void createZombie()
 {
+	if (zmCount >= ZM_MAX)
+	{
+		return;
+	}
+
 	static int zmFre = 200;
 	static int count = 0;
 	count++;
@@ -520,6 +570,11 @@ void createZombie()
 			zms[i].speed = 1;
 			zms[i].blood = 100;
 			zms[i].dead = false;
+			zmCount++;
+		}
+		else
+		{
+			printf("创建僵尸失败！\n");
 		}
 	}
 }
@@ -594,11 +649,12 @@ void updateZombie()
 			if (zms[i].used)
 			{
 				zms[i].x -= zms[i].speed;
-				if (zms[i].x < 170)
+				if (zms[i].x < 56)
 				{
 					//printf("GAME OVER\n");
 					//MessageBox(NULL, "over", "over", 0);	//待优化
 					//exit(0);	//待优化
+					gameStatus = FAIL;
 				}
 			}
 		}
@@ -619,6 +675,11 @@ void updateZombie()
 					if (zms[i].frameIndex >= 20)
 					{
 						zms[i].used = false;
+						killCount++;
+						if (killCount == ZM_MAX)
+						{
+							gameStatus = WIN;
+						}
 					}
 				}
 				else if (zms[i].eating)
@@ -637,7 +698,7 @@ void updateZombie()
 void shoot()
 {
 	static int count = 0;
-	if (++count < 2)return;
+	if (++count < 3)return;
 	count = 0;
 
 	int lines[3] = { 0 };
@@ -658,11 +719,10 @@ void shoot()
 		{
 			if (map[i][j].type == PEASHOOTER + 1 && lines[i])
 			{
-				static int count = 0;
-				count++;
-				if (count > 20)
+				map[i][j].shootTime++;
+				if (map[i][j].shootTime > 20)
 				{
-					count = 0;
+					map[i][j].shootTime = 0;
 
 					int k;
 					for (k = 0; k < bulletMax && bullets[k].used; k++);
@@ -984,6 +1044,28 @@ void barsDown()
 	}
 }
 
+bool checkOver()
+{
+	bool ret = false;
+	if (gameStatus == WIN)
+	{
+		Sleep(2000);
+		loadimage(0, "res/win2.png");
+		mciSendString("play res/win.mp3", NULL, 0, NULL);
+
+		ret = true;
+	}
+	else if (gameStatus == FAIL)
+	{
+		Sleep(2000);
+		loadimage(0, "res/fail2.png");
+		mciSendString("play res/lose.mp3", NULL, 0, NULL);
+
+		ret = true;
+	}
+	return ret;
+}
+
 int main(void)
 {
 	gameInit();
@@ -1011,6 +1093,10 @@ int main(void)
 			flag = false;
 			updateWindow();
 			updateGame();
+			if (checkOver())
+			{
+				break;
+			}
 		}
 	}
 

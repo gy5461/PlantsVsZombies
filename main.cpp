@@ -332,7 +332,7 @@ void updateWindow()
 {
 	BeginBatchDraw();	//开始缓冲
 
-	putimage(0, 0, &imgBg);
+	putimage(-112, 0, &imgBg);
 	putimagePNG(250, 0, &imgBar);
 
 	drawCards();
@@ -403,19 +403,19 @@ void userClick()
 			curX = msg.x;
 			curY = msg.y;
 		}
-		else if (msg.message == WM_LBUTTONUP)
+		else if (msg.message == WM_LBUTTONUP && status == 1)
 		{
-			if (msg.x > 256 && msg.y > 179 && msg.y < 489)
+			if (msg.x > 256 - 112 && msg.y > 179 && msg.y < 489)
 			{
 				int row = (msg.y - 179) / 102;
-				int col = (msg.x - 256) / 81;
+				int col = (msg.x - (256 - 112)) / 81;
 
 				if (map[row][col].type == 0)
 				{
 					map[row][col].type = curPlant;
 					map[row][col].frameIndex = 0;
 
-					map[row][col].x = 256 + col * 81;
+					map[row][col].x = 256 - 112 + col * 81;
 					map[row][col].y = 179 + row * 102 + 14;
 				}
 			}
@@ -453,7 +453,7 @@ void createSunshine()
 
 		balls[i].status = SUNSHINE_DOWN;
 		balls[i].t = 0;
-		balls[i].p1 = vector2(260 + rand() % (900 - 260), 60);
+		balls[i].p1 = vector2(260 - 112 + rand() % (900 - (260 - 112)), 60);
 		balls[i].p4 = vector2(balls[i].p1.x, 200 + (rand() % 4) * 90);
 		int off = 2;
 		float distance = balls[i].p4.y - balls[i].p1.y;
@@ -675,7 +675,7 @@ void shoot()
 						bullets[k].blast = false;
 						bullets[k].frameIndex = 0;
 
-						int plantX = 256 + j * 81;
+						int plantX = 256 - 112 + j * 81;
 						int plantY = 179 + i * 102 + 14;
 						bullets[k].x = plantX + imgPlants[map[i][j].type - 1][0]->getwidth() - 10;
 						bullets[k].y = plantY + 5;
@@ -777,7 +777,7 @@ void checkZm2Plant()
 			//    x1  x2
 			//    [    ]
 			//      x3
-			int plantX = 256 + k * 81;
+			int plantX = 256 - 112 + k * 81;
 			int x1 = plantX + 10;
 			int x2 = plantX + 60;
 			int x3 = zms[i].x + 80;
@@ -937,7 +937,50 @@ void viewScene()
 		}
 
 		EndBatchDraw();
-		Sleep(50);
+		Sleep(30);
+	}
+
+	for (int x = xMin; x <= -112; x+=2)
+	{
+		BeginBatchDraw();
+
+		putimage(x, 0, &imgBg);
+
+		count++;
+		for (int k = 0; k < 9; k++)
+		{
+			putimagePNG(points[k].x - xMin + x, points[k].y, &imgZombieStand[index[k]]);
+			if (count >= 10)
+			{
+				index[k] = (index[k] + 1) % 11;
+			}
+
+			if (count >= 10)count = 0;
+		}
+
+		EndBatchDraw();
+		Sleep(5);
+	}
+}
+
+void barsDown()
+{
+	int height = imgBar.getheight();
+	for (int y = -height; y <= 0; y++)
+	{
+		BeginBatchDraw();
+
+		putimage(-112, 0, &imgBg);
+		putimagePNG(250, y, &imgBar);
+
+		for (int i = 0; i < PLANT_COUNT; i++)
+		{
+			int x = 338 + i * 65;
+			putimage(x, 6 + y, &imgCards[i]);
+		}
+
+		EndBatchDraw();
+		Sleep(5);
 	}
 }
 
@@ -948,6 +991,8 @@ int main(void)
 	startUI();
 
 	viewScene();
+
+	barsDown();
 
 	int timer = 0;
 	bool flag = true;

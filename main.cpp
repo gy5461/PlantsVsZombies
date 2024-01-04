@@ -414,6 +414,7 @@ void userClick()
 					if (sunshine < 100)
 					{
 						curPlant = 0;
+						mciSendString("play res/audio/buttonclick.mp3", NULL, 0, NULL);
 						return;
 					}
 				}
@@ -422,6 +423,7 @@ void userClick()
 					if (sunshine < 50)
 					{
 						curPlant = 0;
+						mciSendString("play res/audio/buttonclick.mp3", NULL, 0, NULL);
 						return;
 					}
 				}
@@ -429,6 +431,8 @@ void userClick()
 				status = 1;
 				curX = msg.x;
 				curY = msg.y;
+
+				mciSendString("play res/audio/seedlift.mp3", NULL, 0, NULL);
 			}
 			else
 			{
@@ -462,6 +466,7 @@ void userClick()
 					{
 						sunshine -= 50;
 					}
+					mciSendString("play res/audio/plant1.mp3", NULL, 0, NULL);
 				}
 			}
 
@@ -498,11 +503,22 @@ void createSunshine()
 
 		balls[i].status = SUNSHINE_DOWN;
 		balls[i].t = 0;
-		balls[i].p1 = vector2(260 - 112 + rand() % (900 - (260 - 112)), 60);
+		balls[i].p1 = vector2(260 - 112 + rand() % (WIN_WIDTH - 80 - (260 - 112)), 60);
 		balls[i].p4 = vector2(balls[i].p1.x, 200 + (rand() % 4) * 90);
 		int off = 2;
 		float distance = balls[i].p4.y - balls[i].p1.y;
 		balls[i].speed = 1.0 / (distance / off);
+	}
+
+	static int proCount = 0;
+	proCount++;
+	if (proCount < 2)
+	{
+		return;
+	}
+	else
+	{
+		proCount = 0;
 	}
 
 	// 向日葵生产阳光
@@ -601,7 +617,7 @@ void updateSunshine()
 			else if (balls[i].status == SUNSHINE_GROUND)
 			{
 				balls[i].timer++;
-				if (balls[i].timer > 100)
+				if (balls[i].timer > 200)
 				{
 					balls[i].used = false;
 					balls[i].timer = 0;
@@ -739,6 +755,7 @@ void shoot()
 						int plantY = 179 + i * 102 + 14;
 						bullets[k].x = plantX + imgPlants[map[i][j].type - 1][0]->getwidth() - 10;
 						bullets[k].y = plantY + 5;
+						mciSendString("play res/audio/firepea.mp3", NULL, 0, NULL);
 					}
 				}
 			}
@@ -799,6 +816,7 @@ void checkBullet2Zm()
 			int x = bullets[i].x;
 			if (bullets[i].row == zms[k].row && x > x1 && x < x2)
 			{
+				mciSendString("play res/audio/kernelpult.mp3", NULL, 0, NULL);
 				bullets[i].blast = true;
 				zms[k].blood -= 10;
 				bullets[i].speed = 0;
@@ -853,6 +871,7 @@ void checkZm2Plant()
 						zms[i].eating = false;
 						zms[i].frameIndex = 0;
 						zms[i].speed = 1;
+						mciSendString("stop res/audio/chomp.mp3", NULL, 0, NULL);
 					}
 				}
 				else
@@ -862,6 +881,8 @@ void checkZm2Plant()
 					zms[i].eating = true;
 					zms[i].speed = 0;
 					zms[i].frameIndex = 0;
+
+					mciSendString("play res/audio/chomp.mp3 repeat", NULL, 0, NULL);
 				}
 			}
 		}
@@ -936,6 +957,7 @@ void startUI()
 				msg.y > 75  && msg.y < 75 + 140)
 			{
 				flag = 1;
+				mciSendString("play res/audio/gravebutton.mp3", NULL, 0, NULL);
 			}
 			else if (msg.message == WM_LBUTTONUP && flag)
 			{
@@ -1051,6 +1073,7 @@ bool checkOver()
 	{
 		Sleep(2000);
 		loadimage(0, "res/win2.png");
+		mciSendString("stop res/bg.mp3", NULL, 0, NULL);
 		mciSendString("play res/win.mp3", NULL, 0, NULL);
 
 		ret = true;
@@ -1059,6 +1082,7 @@ bool checkOver()
 	{
 		Sleep(2000);
 		loadimage(0, "res/fail2.png");
+		mciSendString("stop res/bg.mp3", NULL, 0, NULL);
 		mciSendString("play res/lose.mp3", NULL, 0, NULL);
 
 		ret = true;
